@@ -17,16 +17,25 @@ jobs:
           java-version: "17"
 
       - name: 下载 TLC 模型检验器
-        run: curl -sL -o tla2tools.jar
-          https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
+        run: |
+          set -euxo pipefail
+          curl -fSL -o tla2tools.jar \
+            https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
+          ls -la tla2tools.jar
+          echo "db131ddb48e7004d823bef4493df7b35694babe37505b9d9fa5685e7a331f1f1  tla2tools.jar" | sha256sum -c -
+          java -version
 
       - name: 验证 UnboundedDrain（关闭/排空协议）
-        run: java -jar ../tla2tools.jar -cleanup -config UnboundedDrain.cfg UnboundedDrain.tla
         working-directory: docs/proofs
+        run: |
+          set -euxo pipefail
+          java -jar ../tla2tools.jar -cleanup -config UnboundedDrain.cfg UnboundedDrain.tla
 
       - name: 验证 ShardedWake（唤醒协议）
-        run: java -jar ../tla2tools.jar -cleanup -config ShardedWake.cfg ShardedWake.tla
         working-directory: docs/proofs
+        run: |
+          set -euxo pipefail
+          java -jar ../tla2tools.jar -cleanup -config ShardedWake.cfg ShardedWake.tla
 
   test:
     strategy:
