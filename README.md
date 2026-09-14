@@ -97,6 +97,22 @@ p.Publish("hello")
 - **`Unbounded` 的手动 `Load()` 协议**是刻意的零开销设计；不确定就用 `NewChan` 自动版。
 - **Close 语义契约**：Close/ctx 取消生效前 `Put` 仍可能成功（返回 `nil`），生效后返回 `unbounded.ErrClosed`；已缓冲数据保证排空。
 
+## 正确性验证
+
+四层防线，每层管一段：
+
+| 层 | 抓什么 | 状态 |
+|---|---|---|
+| race 测试 | 数据竞争 | CI（Linux/Windows），每次 push |
+| fuzz（影子模型对账） | 随机操作序列的语义偏离 | CI 种子回归 + nightly 加时 |
+| **TLA+ 模型检验** | **穷举时序交错下的协议不变量** | CI `tla` job，每次 push |
+| soak 长跑 | 时间累积效应（泄漏/劣化） | nightly 10 分钟随机负载 |
+
+TLA+ 规约见 [docs/proofs/](docs/proofs/)：关闭/排空协议与唤醒协议的全部
+状态交错经 TLC 穷举验证——无丢消息、无重复、无死锁、优雅排空。
+其中 `NoLostWakeup` 不变量正是开发过程中一次真实死锁的机器检测器
+（见 [实验报告](docs/benchmarks/v0.2-lockfree.md)）。
+
 ## 致谢
 
 `unbounded`、`serializer`、`pubsub` 源自 [gRPC-Go](https://github.com/grpc/grpc-go)（Apache License 2.0）内部包的泛型重写；`singleflight` 源自 `golang.org/x/sync`（BSD-3）。相应版权声明保留在文件头注释与 NOTICE 中。

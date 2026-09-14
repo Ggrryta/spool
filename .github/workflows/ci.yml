@@ -6,6 +6,28 @@ on:
   pull_request:
 
 jobs:
+  tla:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: 下载 TLC 模型检验器
+        run: curl -sL -o tla2tools.jar
+          https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
+
+      - name: 验证 UnboundedDrain（关闭/排空协议）
+        run: java -jar ../tla2tools.jar -cleanup -config UnboundedDrain.cfg UnboundedDrain.tla
+        working-directory: docs/proofs
+
+      - name: 验证 ShardedWake（唤醒协议）
+        run: java -jar ../tla2tools.jar -cleanup -config ShardedWake.cfg ShardedWake.tla
+        working-directory: docs/proofs
+
   test:
     strategy:
       matrix:

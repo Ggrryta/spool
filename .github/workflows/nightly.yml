@@ -1,0 +1,28 @@
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 18 * * *" # UTC 18:00 = 北京时间 02:00
+  workflow_dispatch:
+
+jobs:
+  soak:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Soak（10 分钟随机负载长跑）
+        run: go test -tags=soak -run TestSoak -timeout 30m -v ./soak/
+        env:
+          SPOOL_SOAK_SECONDS: "600"
+
+      - name: Fuzz 加时（每目标 2 分钟）
+        run: |
+          go test -fuzz=FuzzUnbounded -fuzztime=2m -run=NONE ./unbounded/
+          go test -fuzz=FuzzQueue -fuzztime=2m -run=NONE ./mpsc/
+          go test -fuzz=FuzzShardedChan -fuzztime=2m -run=NONE ./mpsc/
+          go test -fuzz=FuzzGroup -fuzztime=2m -run=NONE ./singleflight/
