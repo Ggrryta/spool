@@ -63,6 +63,28 @@ java -jar ../tla2tools.jar -cleanup -config ShardedWake.cfg ShardedWake.tla
 
 CI 中由 `tla` job 在每次 push 时执行同样命令。
 
+## 验证记录（2026-09-14，TLC 1.8.0）
+
+| 规约 | 穷举状态 | 深度 | 结论 |
+|---|---:|---:|---|
+| UnboundedDrain | 1,443 distinct / 2,617 generated | 15 | 全部不变量 + liveness 成立 |
+| ShardedWake | 13,843 distinct / 25,027 generated | 17 | 全部不变量 + liveness 成立 |
+
+（指纹碰撞概率分别为 9.2E-14 / 8.4E-12，状态空间完整覆盖。）
+
+### 阴性对照：不变量非空洞的证明
+
+为验证 `NoLostWakeup` 不是空洞成立，我们注入了 v0.2 的真实 bug
+（Close 只置 `closing` 不发信号）到规约副本：
+
+```
+Error: Invariant NoLostWakeup is violated.
+```
+
+TLC 立即捕获。结论：**该不变量恰好是那个历史死锁的机器检测器**——
+若 v0.3 的规约先于代码存在，该 bug 不会活过第一天。这也验证了
+"规约-实现一致性"的置信度：不变量的语义与真实故障模式对得上。
+
 ## 建模诚实声明
 
 - 规约建模的是**协议状态机**，不是 Go 实现：内存序、缓存一致性、

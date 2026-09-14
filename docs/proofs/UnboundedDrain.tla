@@ -154,6 +154,6 @@ ClosedComplete == sawClosed => Len(delivered) = Len(putOrder)
 (************************ 时序性质（liveness） ****************************)
 (* closing 后（配合公平性）最终全部送达 *)
 AllDeliveredAfterClose ==
-  (<>[] closing) => (<>[] Len(delivered) = Len(putOrder))
+  (<>[] closing) => (<>[] (Len(delivered) = Len(putOrder)))
 
 =============================================================================

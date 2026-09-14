@@ -6,3 +6,4 @@
 
 # fuzz 语料（本地探索产生；入库语料在 testdata/）
 testdata/fuzz/*/*-fuzzing
+.tools/

@@ -87,6 +87,7 @@ PumpIdle ==
             /\ UNCHANGED <<sig, sleeping>>
        ELSE /\ sleeping' = TRUE
             /\ sig' = 0
+            /\ UNCHANGED pumpExited
   /\ UNCHANGED <<backlogs, closing, delivered, putOrder, putCount>>
 
 (* 泵：被信号唤醒，重新扫描 *)
@@ -96,11 +97,17 @@ PumpWake ==
   /\ sig' = 0
   /\ UNCHANGED <<backlogs, closing, pumpExited, delivered, putOrder, putCount>>
 
+(* 终态自环：泵已退出、协议完成。使合法终态不触发死锁检查；
+   病态卡死——如丢唤醒导致的睡死——仍会被死锁检查捕获。 *)
+Done ==
+  /\ pumpExited
+  /\ UNCHANGED vars
+
 Next ==
   \/ \E k \in Keys : Put(k)
   \/ Close
   \/ \E k \in Keys : PumpDrain(k)
-  \/ PumpIdle \/ PumpWake
+  \/ PumpIdle \/ PumpWake \/ Done
 
 Spec == Init /\ [][Next]_vars
 FairSpec ==
@@ -127,8 +134,8 @@ NoDup ==
 NoLoss ==
   \A i \in DOMAIN putOrder :
     \/ \E j \in DOMAIN delivered : delivered[j] = putOrder[i]
-    \/ \E k \in Keys, j \in DOMAIN backlogs[k] :
-         backlogs[k][j] = putOrder[i]
+    \/ \E k \in Keys :
+         \E j \in DOMAIN backlogs[k] : backlogs[k][j] = putOrder[i]
 
 (* 同 key 严格 FIFO：delivered 中同 key 值的序号单调递增 *)
 PerKeyFIFO ==
@@ -152,6 +159,6 @@ NoLostWakeup ==
 (* closing 后（配合公平性）最终全部送达且泵退出 *)
 DrainAndExit ==
   (<>[] closing) =>
-    (<>[] Len(delivered) = Len(putOrder) /\ pumpExited)
+    (<>[] (Len(delivered) = Len(putOrder) /\ pumpExited))
 
 =============================================================================
