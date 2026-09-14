@@ -1,0 +1,13 @@
+This product includes software developed by the gRPC authors
+(https://github.com/grpc/grpc-go), licensed under the Apache License 2.0,
+and reworked with Go generics for this project:
+
+  - unbounded/unbounded.go   (from internal/buffer/unbounded.go)
+  - serializer/serializer.go (from internal/grpcsync/callback_serializer.go)
+  - pubsub/pubsub.go         (from internal/grpcsync/pubsub.go)
+
+This product includes software developed by the Go authors
+(https://pkg.go.dev/golang.org/x/sync), licensed under the BSD 3-Clause
+License, and reworked with Go generics for this project:
+
+  - singleflight/singleflight.go

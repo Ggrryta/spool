@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test (race, 含 fuzz 种子回归)
+        run: go test -race -count=1 -timeout 10m ./...
+
+      - name: Vet bench module
+        working-directory: bench
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum || (echo "bench 的 go.mod/go.sum 不是 tidy 状态" && exit 1)
+          go vet ./...
