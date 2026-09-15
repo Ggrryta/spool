@@ -29,13 +29,13 @@ jobs:
         working-directory: docs/proofs
         run: |
           set -euxo pipefail
-          java -jar ../tla2tools.jar -cleanup -config UnboundedDrain.cfg UnboundedDrain.tla
+          java -jar ../../tla2tools.jar -cleanup -config UnboundedDrain.cfg UnboundedDrain.tla
 
       - name: 验证 ShardedWake（唤醒协议）
         working-directory: docs/proofs
         run: |
           set -euxo pipefail
-          java -jar ../tla2tools.jar -cleanup -config ShardedWake.cfg ShardedWake.tla
+          java -jar ../../tla2tools.jar -cleanup -config ShardedWake.cfg ShardedWake.tla
 
   test:
     strategy:
