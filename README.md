@@ -14,7 +14,8 @@ go get github.com/Ggrryta/spool
 
 要求 Go 1.24+，仅依赖标准库。
 
-> 顶层设计、路线图与不做清单见 [docs/roadmap.md](docs/roadmap.md)。
+> 顶层设计、路线图与不做清单见 [docs/roadmap.md](docs/roadmap.md)；
+> 全库统一语义契约见 [docs/CONTRACTS.md](docs/CONTRACTS.md)。
 
 ## 包一览
 

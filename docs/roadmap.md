@@ -115,10 +115,15 @@
       + nightly 流水线（10 分钟 soak + fuzz 加时）
 - [x] DoD 达成：证明文档（docs/proofs/README.md）+ 模型检验公开；
       剩余"7 天 nightly 零发现"由时间兑现
+- [x] 规约-实现一致性评审（2026-09-15，见 proofs/README；遗留窗口
+      由 race/fuzz/soak 兜底）—— v0.3 全部结项，仅 7 天 nightly 观察期
 
-### v0.4 — 契约统一化
-- [ ] 全库统一契约文档（Close/panic/背压），以测试形式钉死
-- [ ] DoD：任何包的语义偏离契约即 CI 失败
+### v0.4 — 契约统一化（已完成，见 [docs/CONTRACTS.md](CONTRACTS.md)）
+- [x] 统一契约文档：写入/关闭/顺序/panic 策略/背压/资源卫生六大类
+- [x] `internal/contract` 一致性套件：Verify(spec) + Run(t)，
+      应用于 unbounded.Chan / mpsc.Chan / mpsc.ShardedChan
+- [x] 阴性对照：对"每 5 丢 1"的坏实现套件必然报丢失（断言非空洞）
+- [x] DoD 达成：任何包的语义偏离契约即 CI 红（契约断言随测试运行）
 
 ### v0.5 — 顺流控轴扩张
 - [ ] `backoff`（时间流控；xrpc 有现成实现可提炼）
@@ -198,3 +203,4 @@ ShardedChan 转正。详见 [实验报告](benchmarks/v0.2.1-sharded.md)。
 | 2026-09-14 | v1.6 | 模块路径迁至 github.com/Ggrryta/spool；CI（双平台）与 .gitignore 入库；README 挂徽章。v0.1 仅剩英文 godoc 与推送建仓 |
 | 2026-09-14 | v1.7 | v0.3 完成：两份 TLA+ 规约入 CI（tla job）、soak + nightly 流水线、README "正确性验证"四层防线章节；soak 开发中修掉测试自身三处缺陷（rng 并发安全、双写者 key 契约误用、goroutine 沉淀竞态） |
 | 2026-09-15 | v1.8 | CI tla job 修复转绿：TLC jar 密封化入仓（tools/），排除下载漂移；根因是 tla job 相对路径少写一级（../ vs ../../），经 Linux 容器本地复现定位 |
+| 2026-09-15 | v1.9 | v0.3 结项（规约-实现一致性评审完成）；v0.4 完成：统一契约文档 + internal/contract 一致性套件（含阴性对照）接入三个通道化实现 |

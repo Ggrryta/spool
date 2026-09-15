@@ -95,6 +95,24 @@ TLC 立即捕获。结论：**该不变量恰好是那个历史死锁的机器�
 - Go 代码与规约的一致性靠人工评审（规约的动作逐一镜像实现分支）；
   未来可考虑用同一状态机做 Go 侧的模型驱动测试以缩小间隙。
 
+## 规约-实现一致性评审（2026-09-15，v0.3 收尾）
+
+逐动作对照规约与 Go 实现（评审人：作者；方法：动作逐一镜像）：
+
+| 规约动作 | 实现对应 | 结论 |
+|---|---|---|
+| UnboundedDrain.Put | `unbounded.go` Put 两分支（直递/入 backlog） | 一致 |
+| LoadMove / LoadClose | `Load()` 两分支，含"backlog 空且 closing 则关闭（通道有值也允许，Go 语义下先取缓冲值）"边界 | 一致 |
+| RecvData / RecvClosed | 消费者 select 接收（缓冲值优先于关闭观察） | 一致 |
+| Close | `Close()`，幂等由 ~closing 前置表达 | 一致 |
+| ShardedWake.Put | `Queue.Push` + trySignal（sig'=1 覆盖两分支） | 一致 |
+| Close | `ShardedChan.Close`（置位 + 信号——即 v0.2 死锁修复） | 一致 |
+| PumpDrain | 泵内层循环 Peek/Out/Pop（Out 交接抽象为无界汇） | 一致 |
+| PumpIdle / PumpWake | 泵外层"排空→检查→`<-sig`"循环 | 一致 |
+
+**遗留间隙（已识别，由测试层兜底）**：泵"排空后、入睡前"的窗口在规约中被
+原子化（PumpIdle），该窗口的真实并发行为由 race/fuzz/soak 三层兜底。
+
 ## 配套资产
 
 - soak 长跑：`soak/soak_test.go`（`-tags=soak`，nightly 10 分钟随机负载，
