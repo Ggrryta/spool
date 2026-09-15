@@ -109,6 +109,8 @@
 - [x] TLA+ spec：`ShardedWake`（唤醒协议：NoLostWakeup——v0.2 真实
       死锁的机器检测器、PerKeyFIFO、ExitedClean + liveness）
 - [x] CI `tla` job：每次 push 自动 TLC 穷举验证两份规约
+      （TLC jar 收录于仓库实现密封化，排查记录：相对路径少写一级
+      导致 CI 连续失败三次，Linux 容器本地复现后修正）
 - [x] soak 长跑（`-tags=soak`，随机负载 + goroutine 泄漏栈转储）
       + nightly 流水线（10 分钟 soak + fuzz 加时）
 - [x] DoD 达成：证明文档（docs/proofs/README.md）+ 模型检验公开；
@@ -195,3 +197,4 @@ ShardedChan 转正。详见 [实验报告](benchmarks/v0.2.1-sharded.md)。
 | 2026-09-14 | v1.5 | 库命名定为 spool（SPOOL 词源），完成全局改名：目录/模块路径/全部 import/文档 |
 | 2026-09-14 | v1.6 | 模块路径迁至 github.com/Ggrryta/spool；CI（双平台）与 .gitignore 入库；README 挂徽章。v0.1 仅剩英文 godoc 与推送建仓 |
 | 2026-09-14 | v1.7 | v0.3 完成：两份 TLA+ 规约入 CI（tla job）、soak + nightly 流水线、README "正确性验证"四层防线章节；soak 开发中修掉测试自身三处缺陷（rng 并发安全、双写者 key 契约误用、goroutine 沉淀竞态） |
+| 2026-09-15 | v1.8 | CI tla job 修复转绿：TLC jar 密封化入仓（tools/），排除下载漂移；根因是 tla job 相对路径少写一级（../ vs ../../），经 Linux 容器本地复现定位 |
