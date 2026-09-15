@@ -25,18 +25,24 @@
 | `unbounded.Chan` | 全局 FIFO |
 | `mpsc.Chan` | 全局 FIFO |
 | `mpsc.ShardedChan` | 同 key 严格 FIFO；跨 key 不保证 |
+| `bounded.Chan` | 全局 FIFO（单一环形缓冲） |
 | `serializer` / `pubsub` | 回调/载荷按调度顺序 FIFO 串行执行 |
 
 ## panic 策略
 
-- 队列类（unbounded/mpsc）：只搬运数据、不执行用户代码，无用户 panic 面
+- 队列类（unbounded/mpsc/bounded）：只搬运数据、不执行用户代码，无用户 panic 面
 - `serializer`：默认 **fail-fast**（回调 panic 在 runner goroutine 上重抛）；
   `WithPanicHandler` 可恢复并继续执行后续回调（已有测试钉死该语义）
 
 ## 背压
 
-全部实现**无背压**（这是无界队列的定义）：消费不及时，值驻留内存。
-需要背压的场景请使用带缓冲的原生 channel 或 bounded 类型（v0.5 规划）。
+| 类型 | 行为 |
+|---|---|
+| unbounded / mpsc 全家族 | **无背压**（无界定义）：消费不及时，值驻留内存 |
+| `bounded.Chan` | 缓冲满时 `Put(ctx, v)` **阻塞**，直到有空间、关闭或 ctx 取消 |
+
+bounded 的 Put 带有 ctx：阻塞中的写入可被取消/超时打断（返回 ctx.Err()），
+Close 则以广播（closedCh 关闭）唤醒全部阻塞者并返回 ErrClosed。
 
 ## 资源卫生
 
@@ -57,6 +63,7 @@ internal/contract.Run(t, spec) —— 测试包装：任何违反即 t.Errorf
 | unbounded | `Chan` | GlobalFIFO |
 | mpsc | `Chan` | GlobalFIFO |
 | mpsc | `ShardedChan` | PerKeyFIFO(4) |
+| bounded | `Chan` | GlobalFIFO（Put 带 ctx） |
 
 （手动版 `unbounded.Unbounded` 的 Load 协议不适用通道表面，由
 `FuzzUnbounded` 影子模型对账 + 单元测试覆盖。）

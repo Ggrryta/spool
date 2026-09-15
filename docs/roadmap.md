@@ -125,10 +125,18 @@
 - [x] 阴性对照：对"每 5 丢 1"的坏实现套件必然报丢失（断言非空洞）
 - [x] DoD 达成：任何包的语义偏离契约即 CI 红（契约断言随测试运行）
 
-### v0.5 — 顺流控轴扩张
-- [ ] `backoff`（时间流控；xrpc 有现成实现可提炼）
-- [ ] bounded MPMC ring（背压流控）
-- [ ] 每包准入测试：见 §2 的唯一准入问题
+### v0.5 — 顺流控轴扩张（已完成）
+- [x] `backoff`：时间流控（提炼自 xrpc/gRPC connection-backoff；
+      Exponential + Sleep + Runner，ErrReset/Permanent 语义，全 ctx 感知）
+- [x] `bounded.Chan`：背压流控（容量固定 MPMC，mutex+ring+批量窃取泵；
+      Put(ctx) 阻塞可取消；广播唤醒修复——容量 1 的 trySend 无法唤醒
+      全部阻塞 Put 的实测死锁，回归测试钉死）
+- [x] 准入测试：backoff 的差异化=与队列组合 + ctx 契约（不重复造
+      cenkalti 的策略全覆盖）；bounded 的差异化=契约同构的排空 Close
+      （性能诚实声明：MPMC 吞吐低于原生 chan 3~6 倍，见 BenchmarkMPMC，
+      定位为契约拼图组件而非性能选项）
+- [x] 基准：BenchmarkMPMC（cap 16/1024 对比原生 chan）+ 挂账偿还
+      （64/128 生产者扫描：ShardedChan≈unbounded≈115~122ns 平坦）
 
 ### v1.0 — API 冻结
 - 前提三样齐：基准表（§3）、证明文档（§3）、xrpc 实战验证零回归
@@ -204,3 +212,4 @@ ShardedChan 转正。详见 [实验报告](benchmarks/v0.2.1-sharded.md)。
 | 2026-09-14 | v1.7 | v0.3 完成：两份 TLA+ 规约入 CI（tla job）、soak + nightly 流水线、README "正确性验证"四层防线章节；soak 开发中修掉测试自身三处缺陷（rng 并发安全、双写者 key 契约误用、goroutine 沉淀竞态） |
 | 2026-09-15 | v1.8 | CI tla job 修复转绿：TLC jar 密封化入仓（tools/），排除下载漂移；根因是 tla job 相对路径少写一级（../ vs ../../），经 Linux 容器本地复现定位 |
 | 2026-09-15 | v1.9 | v0.3 结项（规约-实现一致性评审完成）；v0.4 完成：统一契约文档 + internal/contract 一致性套件（含阴性对照）接入三个通道化实现 |
+| 2026-09-15 | v2.0 | v0.5 完成：backoff（时间流控）+ bounded.Chan（背压 MPMC）入列，共 7 包；修掉第 4 个真并发 bug（bounded Close 广播唤醒缺失）；基准偿还 64/128 生产者挂账 |

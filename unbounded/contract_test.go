@@ -20,7 +20,7 @@ func TestContractUnboundedChan(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			c := NewChan[int](ctx)
 			return contract.Channel{
-				Put:   func(key, v int) error { return c.Put(v) },
+				Put:   func(_ context.Context, key, v int) error { return c.Put(v) },
 				Close: func() { c.Close(); cancel() },
 				Out:   c.Out(),
 				Done:  c.Done(),

@@ -91,6 +91,14 @@ p.Subscribe("logger", func(payload any) { log.Println(payload) })
 p.Publish("hello")
 ```
 
+### backoff — 时间维度的流控
+
+提炼自 gRPC connection-backoff 规范：指数退避 + 抖动，配 `Sleep`（可取消）与 `Runner`（重试执行器，支持 `ErrReset` 重置与 `Permanent` 终止性错误）。所有等待尊重 ctx 取消。
+
+### bounded — 有界 MPMC 通道（背压）
+
+容量固定的多生产者/多消费者通道：缓冲满时 `Put(ctx, v)` 阻塞（可取消）——用背压限速生产者。与无界家族契约同构（排空 Close、Done），性能特征与基准见 [docs/benchmarks/](docs/benchmarks/)。
+
 ## 设计取舍
 
 - **每包独立 import**，按需拉取，无大而全的顶层包。

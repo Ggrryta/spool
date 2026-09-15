@@ -17,7 +17,7 @@ func referenceSpec(name string) Spec {
 			ctx, cancel := context.WithCancel(context.Background())
 			c := unbounded.NewChan[int](ctx)
 			return Channel{
-				Put:   func(key, v int) error { return c.Put(v) },
+				Put:   func(_ context.Context, key, v int) error { return c.Put(v) },
 				Close: func() { c.Close(); cancel() },
 				Out:   c.Out(),
 				Done:  c.Done(),
@@ -54,7 +54,7 @@ func TestSuiteCatchesDroppingImplementation(t *testing.T) {
 				close(out)
 			}()
 			return Channel{
-				Put:   func(key, v int) error { return c.Put(v) },
+				Put:   func(_ context.Context, key, v int) error { return c.Put(v) },
 				Close: func() { c.Close(); cancel() },
 				Out:   out,
 			}

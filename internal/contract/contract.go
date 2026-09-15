@@ -15,6 +15,7 @@
 package contract
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -33,10 +34,12 @@ const (
 // Channel 是被测对象须满足的最小表面。key 参数在 GlobalFIFO 模式下被
 // 适配器忽略；PerKeyFIFO 模式下决定值所属的顺序域。
 type Channel struct {
-	Put   func(key, v int) error // 永不阻塞；关闭后返回非 nil 错误
-	Close func()                 // 幂等；触发优雅排空
-	Out   <-chan int             // 排空后关闭
-	Done  <-chan struct{}        // 可选：泵退出信号（无则为 nil）
+	// Put 写入一个值。无界实现忽略 ctx（永不阻塞）；有界实现（bounded）
+	// 在缓冲满时阻塞，直到成功、关闭或 ctx 取消。
+	Put   func(ctx context.Context, key, v int) error
+	Close func()          // 幂等；触发优雅排空
+	Out   <-chan int      // 排空后关闭
+	Done  <-chan struct{} // 可选：泵退出信号（无则为 nil）
 }
 
 // Spec 描述一个被测实现。每项检查都会调用 New 获取全新实例。
@@ -90,9 +93,10 @@ func Verify(spec Spec) []string {
 	// ---- 1. 关闭后写入必须被拒绝 ----
 	{
 		const check = "PutAfterClose"
+		ctx := context.Background()
 		c := spec.New()
 		c.Close()
-		if err := c.Put(0, 1); err == nil {
+		if err := c.Put(ctx, 0, 1); err == nil {
 			violate(check, "Close 后 Put 未返回错误")
 		}
 		c.Close() // 幂等
@@ -108,24 +112,33 @@ func Verify(spec Spec) []string {
 		waitDone(check, c)
 	}
 
-	// ---- 3. 顺序排空：先写后关，验证顺序与完备 ----
+	// ---- 3. 顺序排空：生产与消费并发，验证顺序与完备 ----
+	// （写入放 goroutine：有界实现满时 Put 会阻塞，必须并发排空才不死锁；
+	//   对无界实现两者等价。）
 	{
 		const check = "DrainFIFO"
 		const n = 200
 		c := spec.New()
-		for i := 0; i < n; i++ {
-			key := 0
-			if spec.Order == PerKeyFIFO {
-				key = i % spec.Keys
-			}
-			if err := c.Put(key, i); err != nil {
-				violate(check, "Put(%d) = %v, 期望 nil", i, err)
-			}
-		}
-		c.Close()
-
+		ctx := context.Background()
 		var got []int
+		putDone := make(chan struct{})
+		go func() {
+			defer close(putDone)
+			for i := 0; i < n; i++ {
+				key := 0
+				if spec.Order == PerKeyFIFO {
+					key = i % spec.Keys
+				}
+				if err := c.Put(ctx, key, i); err != nil {
+					violate(check, "Put(%d) = %v, 期望 nil", i, err)
+					return
+				}
+			}
+			c.Close()
+		}()
+
 		drain(check, c, func(v int) { got = append(got, v) })
+		<-putDone
 		waitDone(check, c)
 
 		if len(got) != n {
@@ -178,6 +191,7 @@ func Verify(spec Spec) []string {
 			wg.Add(1)
 			go func(p int) {
 				defer wg.Done()
+				ctx := context.Background()
 				for i := 0; i < perProducer; i++ {
 					var key, v int
 					switch spec.Order {
@@ -187,7 +201,7 @@ func Verify(spec Spec) []string {
 						key = p // 单写者/key：FIFO 可断言
 						v = key*1_000_000 + i
 					}
-					if err := c.Put(key, v); err != nil {
+					if err := c.Put(ctx, key, v); err != nil {
 						return // 关闭竞态窗口内的拒绝由 EarlyClose 场景覆盖
 					}
 					success.Add(1)
@@ -236,6 +250,8 @@ func Verify(spec Spec) []string {
 	}
 
 	// ---- 5. 提前关闭竞争窗口：送达数 == 成功 Put 数 ----
+	// 排空必须与 Close 并发：有界实现下，阻塞中的 Put 要等到
+	// "Close 唤醒 + 消费者排空"才能返回。
 	{
 		const check = "EarlyCloseRace"
 		c := spec.New()
@@ -250,6 +266,7 @@ func Verify(spec Spec) []string {
 			wg.Add(1)
 			go func(p int) {
 				defer wg.Done()
+				ctx := context.Background()
 				for i := 0; ; i++ {
 					var key, v int
 					switch spec.Order {
@@ -258,16 +275,17 @@ func Verify(spec Spec) []string {
 					case PerKeyFIFO:
 						key, v = p, p*1_000_000+i
 					}
-					if err := c.Put(key, v); err != nil {
+					if err := c.Put(ctx, key, v); err != nil {
 						return // 关闭生效，停止写入
 					}
 					success.Add(1)
 				}
 			}(p)
 		}
-		time.Sleep(5 * time.Millisecond) // 让部分值入队，制造竞争窗口
-		c.Close()
-		wg.Wait()
+		go func() {
+			time.Sleep(5 * time.Millisecond) // 让部分值入队，制造竞争窗口
+			c.Close()
+		}()
 
 		var got int
 		seen := make(map[int]bool)
@@ -278,6 +296,7 @@ func Verify(spec Spec) []string {
 			seen[v] = true
 			got++
 		})
+		wg.Wait()
 		waitDone(check, c)
 
 		if int64(got) != success.Load() {
